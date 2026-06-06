@@ -349,12 +349,21 @@ async function loadSwaps(filters?: SwapFilters): Promise<Swap[]> {
   return filters ? filterSwaps(all, filters) : all;
 }
 
+/** Firebase RTDB rejects `undefined` — omit those keys before write. */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const out = { ...obj };
+  for (const key of Object.keys(out)) {
+    if (out[key] === undefined) delete out[key];
+  }
+  return out;
+}
+
 export async function createSwap(data: Omit<Swap, 'id' | 'createdAt'>): Promise<Swap> {
   const id = newId();
   const ts = nowIso();
-  const record = { ...data, createdAt: ts };
+  const record = stripUndefined({ ...data, createdAt: ts } as Record<string, unknown>);
   await rtdbRef(`swaps/${id}`).set(record);
-  return { id, ...record };
+  return { id, ...(record as Omit<Swap, 'id'>) };
 }
 
 export async function getSwap(
