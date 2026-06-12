@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { createExpense, listExpenses } from '../lib/db.js';
-import { authMiddleware, requireRole } from '../middleware/auth.js';
+import { authMiddleware, requireOwner } from '../middleware/auth.js';
 import type { ExpenseType } from '../lib/types.js';
 
 const router = Router();
@@ -16,7 +16,7 @@ const expenseSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-router.post('/', requireRole('OWNER'), async (req, res) => {
+router.post('/', requireOwner, async (req, res) => {
   try {
     const data = expenseSchema.parse(req.body);
     if (data.type === 'SALARY' && !data.employeeId) {
@@ -43,7 +43,7 @@ router.post('/', requireRole('OWNER'), async (req, res) => {
   }
 });
 
-router.get('/', requireRole('OWNER'), async (req, res) => {
+router.get('/', requireOwner, async (req, res) => {
   try {
     const { substationId, type, from, to } = req.query;
     
