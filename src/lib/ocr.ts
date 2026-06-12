@@ -90,6 +90,9 @@ function extractPlate(text: string): string | null {
     const m = text.match(re);
     if (m) return m[1].toUpperCase().replace(/\s+/g, ' ').trim();
   }
+  return null;
+}
+
 export async function analyzeBatteryImage(
   filePath: string,
   mode: 'incoming' | 'outgoing'
