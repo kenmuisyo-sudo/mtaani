@@ -257,4 +257,19 @@ router.get('/me', authMiddleware, async (req, res) => {
   res.json({ user: { ...safe, hasOverdueBills }, firebaseToken });
 });
 
+router.post('/change-password', authMiddleware, async (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await updateUser(req.user!.userId, { passwordHash });
+    res.json({ message: 'Password updated successfully' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update password' });
+  }
+});
+
 export default router;

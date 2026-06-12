@@ -7,8 +7,10 @@ import {
   upsertSystemSetting,
   listOrganizationsWithStats,
   updateOrganizationStatus,
-  listAllUsers
+  listAllUsers,
+  createAdminUser,
 } from '../lib/db.js';
+import bcrypt from 'bcryptjs';
 import { authMiddleware, requireSystemAdmin } from '../middleware/auth.js';
 
 const router = Router();
@@ -77,6 +79,32 @@ router.get('/users', async (req, res) => {
     res.json({ users });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Create new System Admin
+router.post('/users', async (req, res) => {
+  try {
+    const { email, password } = z.object({
+      email: z.string().email(),
+      password: z.string().min(8)
+    }).parse(req.body);
+
+    const existingUser = await listAllUsers().then(users => users.find(u => u.email === email));
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email is already taken by another user.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await createAdminUser(email, passwordHash);
+    
+    res.status(201).json({ message: 'System Admin created successfully' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid data', details: error.errors });
+    } else {
+      res.status(500).json({ error: 'Failed to create admin user' });
+    }
   }
 });
 
