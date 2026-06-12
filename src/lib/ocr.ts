@@ -90,11 +90,6 @@ function extractPlate(text: string): string | null {
     const m = text.match(re);
     if (m) return m[1].toUpperCase().replace(/\s+/g, ' ').trim();
   }
-  return null;
-}
-
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 export async function analyzeBatteryImage(
   filePath: string,
   mode: 'incoming' | 'outgoing'
@@ -102,33 +97,10 @@ export async function analyzeBatteryImage(
   const { width, height, data } = await imageToRgba(filePath);
   const qr = decodeQrFromImage(data, width, height);
 
-  let rawText = '';
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const prompt = mode === 'outgoing' 
-        ? 'Extract any battery percentage (like 98%), barcode (like BATT-12345), and vehicle plate numbers (like KDG 123A) visible in this image. If it is a 7-segment display, read the digits carefully. Return ONLY the raw text that represents the numbers/barcodes, separated by spaces. Do not add markdown or explanations.'
-        : 'Extract the battery percentage (like 98%) and barcode (like BATT-12345) from this image. If it is a 7-segment display, read the digits carefully. Return ONLY the raw text that represents the numbers/barcodes, separated by spaces. Do not add markdown or explanations.';
-      const imageParts = [
-        {
-          inlineData: {
-            data: fs.readFileSync(filePath).toString('base64'),
-            mimeType: 'image/jpeg'
-          }
-        }
-      ];
-      const result = await model.generateContent([prompt, ...imageParts]);
-      rawText = result.response.text();
-    } catch (e) {
-      console.error('Gemini OCR failed, falling back to Tesseract', e);
-      const { data: ocr } = await Tesseract.recognize(filePath, 'eng', { logger: () => {} });
-      rawText = ocr.text;
-    }
-  } else {
-    const { data: ocr } = await Tesseract.recognize(filePath, 'eng', { logger: () => {} });
-    rawText = ocr.text;
-  }
+  const { data: ocr } = await Tesseract.recognize(filePath, 'eng', {
+    logger: () => {},
+  });
+  const rawText = ocr.text;
 
   const barcode = extractBarcode(rawText, qr);
   const percentage = extractPercentage(rawText);
