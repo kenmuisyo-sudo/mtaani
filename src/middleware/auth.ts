@@ -59,7 +59,7 @@ export async function authMiddleware(
     }
     req.user = {
       userId: user.id,
-      organizationId: user.organizationId,
+      organizationId: user.organizationId || '',
       role: user.role,
       substationId: user.substationId ?? null,
       status: user.status,
@@ -73,8 +73,16 @@ export async function authMiddleware(
 }
 
 export function requireOwner(req: Request, res: Response, next: NextFunction) {
-  if (req.user?.role !== 'OWNER') {
+  if (req.user?.role !== 'OWNER' && req.user?.role !== 'SYSTEM_ADMIN') {
     res.status(403).json({ error: 'Owner access required' });
+    return;
+  }
+  next();
+}
+
+export function requireSystemAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'SYSTEM_ADMIN') {
+    res.status(403).json({ error: 'System Admin access required' });
     return;
   }
   next();

@@ -8,6 +8,7 @@ import {
   getUserWithRelations,
   updateUser,
 } from '../lib/db.js';
+import { prisma } from '../lib/prisma.js';
 import { sendOtpEmail, generateOtp } from '../lib/email.js';
 import { createFirebaseCustomToken } from '../lib/firebase.js';
 import { signToken, authMiddleware } from '../middleware/auth.js';
@@ -98,7 +99,7 @@ router.post('/verify-otp', async (req, res) => {
   const full = await getUserWithRelations(found.id);
   const token = signToken({
     userId: found.id,
-    organizationId: found.organizationId,
+    organizationId: found.organizationId || '',
     role: found.role,
     substationId: null,
   });
@@ -126,7 +127,7 @@ router.post('/resend-otp', async (req, res) => {
     res.status(400).json({ error: 'Cannot resend OTP for this account' });
     return;
   }
-  const org = await getOrganization(user.organizationId);
+  const org = user.organizationId ? await getOrganization(user.organizationId) : null;
   const otp = generateOtp();
   await updateUser(user.id, {
     otpCode: otp,
@@ -175,13 +176,13 @@ router.post('/login', async (req, res) => {
 
   const token = signToken({
     userId: user.id,
-    organizationId: user.organizationId,
+    organizationId: user.organizationId || '',
     role: user.role,
     substationId: user.substationId ?? null,
   });
 
   await logActivity(req, {
-    organizationId: user.organizationId,
+    organizationId: user.organizationId || '',
     userId: user.id,
     substationId: user.substationId,
     type: 'LOGIN',
@@ -190,6 +191,14 @@ router.post('/login', async (req, res) => {
   });
 
   const firebaseToken = await createFirebaseCustomToken(user.id);
+
+  let hasOverdueBills = false;
+  if (user.role === 'OWNER' && user.organizationId) {
+    const count = await prisma.bill.count({
+      where: { organizationId: user.organizationId, status: 'OVERDUE' },
+    });
+    hasOverdueBills = count > 0;
+  }
 
   res.json({
     token,
@@ -208,6 +217,7 @@ router.post('/login', async (req, res) => {
       organization: user.organization
         ? { id: user.organization.id, businessName: user.organization.businessName }
         : undefined,
+      hasOverdueBills,
     },
   });
 });
@@ -220,7 +230,16 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
   const { passwordHash: _, otpCode: __, ...safe } = user;
   const firebaseToken = await createFirebaseCustomToken(user.id);
-  res.json({ user: safe, firebaseToken });
+
+  let hasOverdueBills = false;
+  if (user.role === 'OWNER' && user.organizationId) {
+    const count = await prisma.bill.count({
+      where: { organizationId: user.organizationId, status: 'OVERDUE' },
+    });
+    hasOverdueBills = count > 0;
+  }
+
+  res.json({ user: { ...safe, hasOverdueBills }, firebaseToken });
 });
 
 export default router;

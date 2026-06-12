@@ -143,7 +143,7 @@ export async function getUserWithRelations(idOrEmail: string): Promise<User | nu
       ? await getUserByEmail(idOrEmail)
       : await getUserById(idOrEmail);
   if (!user) return null;
-  user.organization = (await getOrganization(user.organizationId)) ?? undefined;
+  user.organization = user.organizationId ? (await getOrganization(user.organizationId)) ?? undefined : undefined;
   if (user.substationId) {
     user.substation = (await getSubstation(user.substationId)) ?? null;
   }

@@ -1,4 +1,4 @@
-export type UserRole = 'OWNER' | 'EMPLOYEE';
+export type UserRole = 'OWNER' | 'EMPLOYEE' | 'SYSTEM_ADMIN';
 export type UserStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BLOCKED';
 export type SubstationStatus = 'ACTIVE' | 'INACTIVE';
 export type ActivityType =
@@ -26,7 +26,7 @@ export interface Organization {
 
 export interface User {
   id: string;
-  organizationId: string;
+  organizationId?: string | null;
   substationId?: string | null;
   role: UserRole;
   status: UserStatus;

@@ -15,6 +15,8 @@ import reportRoutes from './routes/reports.js';
 import dashboardRoutes from './routes/dashboard.js';
 import activityRoutes from './routes/activity.js';
 import expensesRoutes from './routes/expenses.js';
+import systemAdminRoutes from './routes/system-admin.js';
+import billingRoutes from './routes/billing.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = process.env.UPLOAD_DIR ?? path.join(__dirname, '../uploads');
@@ -80,6 +82,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/expenses', expensesRoutes);
+app.use('/api/system-admin', systemAdminRoutes);
+app.use('/api/billing', billingRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({

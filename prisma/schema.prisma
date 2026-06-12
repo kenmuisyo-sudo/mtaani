@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   OWNER
   EMPLOYEE
+  SYSTEM_ADMIN
 }
 
 enum UserStatus {
@@ -22,6 +23,18 @@ enum UserStatus {
 enum SubstationStatus {
   ACTIVE
   INACTIVE
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
 }
 
 enum ExpenseType {
@@ -50,6 +63,7 @@ model Organization {
   email        String        @unique
   phone        String?
   location     String?
+  status       OrganizationStatus @default(ACTIVE)
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
   users        User[]
@@ -57,6 +71,7 @@ model Organization {
   swaps        Swap[]
   activities   ActivityLog[]
   expenses     Expense[]
+  bills        Bill[]
 }
 
 model ActivityLog {
@@ -80,8 +95,8 @@ model ActivityLog {
 
 model User {
   id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   substationId   String?
   substation     Substation?  @relation(fields: [substationId], references: [id], onDelete: SetNull)
   role           UserRole
@@ -191,4 +206,29 @@ model Expense {
   @@index([organizationId])
   @@index([substationId])
   @@index([datePaid])
+}
+
+model Bill {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  month          Int
+  year           Int
+  swapCount      Int
+  amount         Decimal      @db.Decimal(12, 2)
+  status         BillStatus   @default(PENDING)
+  dueDate        DateTime     @db.Timestamptz(3)
+  paidAt         DateTime?    @db.Timestamptz(3)
+  mpesaReceipt   String?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, month, year])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model SystemSetting {
+  key   String @id
+  value String
 }
