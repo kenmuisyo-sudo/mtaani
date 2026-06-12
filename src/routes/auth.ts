@@ -198,6 +198,7 @@ router.post('/login', async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      phone: user.phone ?? null,
       role: user.role,
       status: user.status,
       substationId: user.substationId,

@@ -8,6 +8,7 @@ import {
   listActivities,
   listSubstations,
   listSwaps,
+  aggregateExpenses,
 } from '../lib/db.js';
 import { authMiddleware, requireOwner } from '../middleware/auth.js';
 import { dailySwapSeries } from '../lib/chartData.js';
@@ -32,6 +33,7 @@ router.get('/owner', requireOwner, async (req, res) => {
     recentActivity,
     topSubstations,
     chartDaily,
+    todayExpenses,
   ] = await Promise.all([
     listSubstations(orgId),
     countUsers(orgId, { role: 'EMPLOYEE', status: 'ACTIVE' }),
@@ -42,6 +44,7 @@ router.get('/owner', requireOwner, async (req, res) => {
     listActivities(orgId, undefined, { take: 12 }),
     groupSwapsBySubstation({ organizationId: orgId, swappedAtGte: startOfDay }),
     dailySwapSeries({ organizationId: orgId }, 7),
+    aggregateExpenses({ organizationId: orgId, dateGte: startOfDay }),
   ]);
 
   const substationsCount = substations.filter((s) => s.status === 'ACTIVE').length;
@@ -61,6 +64,8 @@ router.get('/owner', requireOwner, async (req, res) => {
     today: {
       swaps: todayAgg.count,
       revenue: todayAgg.totalCharged,
+      expenses: todayExpenses,
+      profit: todayAgg.totalCharged - todayExpenses,
       companyShare: todayAgg.companyShare,
       stationShare: todayAgg.stationShare,
       energyPercent: todayAgg.netPercent,

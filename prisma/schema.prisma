@@ -24,6 +24,12 @@ enum SubstationStatus {
   INACTIVE
 }
 
+enum ExpenseType {
+  RENT
+  SALARY
+  ELECTRICITY
+}
+
 enum ActivityType {
   LOGIN
   SWAP_CREATED
@@ -50,6 +56,7 @@ model Organization {
   substations  Substation[]
   swaps        Swap[]
   activities   ActivityLog[]
+  expenses     Expense[]
 }
 
 model ActivityLog {
@@ -91,6 +98,7 @@ model User {
   updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
   swapsCreated   Swap[]        @relation("SwapEmployee")
   activities     ActivityLog[]
+  expensesReceived Expense[]   @relation("ExpenseEmployee")
 
   @@index([organizationId])
   @@index([substationId])
@@ -109,6 +117,7 @@ model Substation {
   employees      User[]
   swaps          Swap[]
   activities     ActivityLog[]
+  expenses       Expense[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -162,4 +171,24 @@ model Swap {
   @@index([tukTukReg])
   @@index([incomingBarcode])
   @@index([outgoingBarcode])
+}
+
+model Expense {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  substationId   String
+  substation     Substation   @relation(fields: [substationId], references: [id], onDelete: Cascade)
+  type           ExpenseType
+  amount         Decimal      @db.Decimal(12, 2)
+  datePaid       DateTime     @db.Timestamptz(3)
+  employeeId     String?
+  employee       User?        @relation("ExpenseEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+  notes          String?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@index([organizationId])
+  @@index([substationId])
+  @@index([datePaid])
 }

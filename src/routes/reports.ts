@@ -5,6 +5,8 @@ import {
   getSubstation,
   groupSwapsBySubstation,
   listSwaps,
+  listExpenses,
+  aggregateExpenses,
 } from '../lib/db.js';
 import { authMiddleware, resolveSubstationId } from '../middleware/auth.js';
 import { buildSwapPdf } from '../services/pdfReport.js';
@@ -33,10 +35,19 @@ router.get('/summary', async (req, res) => {
     ...(substationId && { substationId }),
   };
 
-  const [agg, substationBreakdown, transactions] = await Promise.all([
+  const expenseFilters = {
+    organizationId: req.user!.organizationId,
+    dateGte: from,
+    dateLte: to,
+    ...(substationId && { substationId }),
+  };
+
+  const [agg, substationBreakdown, transactions, expensesList, expensesTotal] = await Promise.all([
     aggregateSwaps(filters),
     groupSwapsBySubstation(filters),
     listSwaps(filters, { take: 200, orderDesc: true }),
+    listExpenses(expenseFilters, { orderDesc: true }),
+    aggregateExpenses(expenseFilters),
   ]);
 
   const bySubstation = await Promise.all(
@@ -56,6 +67,8 @@ router.get('/summary', async (req, res) => {
       companyShare: agg.companyShare,
       stationShare: agg.stationShare,
       energyPercent: agg.netPercent,
+      totalExpenses: expensesTotal,
+      profit: agg.totalCharged - expensesTotal,
     },
     bySubstation: bySubstation.map((b) => ({
       substation: b.substation ? { id: b.substation.id, name: b.substation.name, code: b.substation.code } : null,
@@ -64,6 +77,7 @@ router.get('/summary', async (req, res) => {
       stationShare: b.stationShare,
     })),
     transactions,
+    expenses: expensesList,
   });
 });
 
@@ -99,9 +113,18 @@ router.get('/pdf', async (req, res) => {
     ...(substationId && { substationId }),
   };
 
-  const [swaps, agg] = await Promise.all([
+  const expenseFilters = {
+    organizationId: req.user!.organizationId,
+    dateGte: from,
+    dateLte: to,
+    ...(substationId && { substationId }),
+  };
+
+  const [swaps, agg, expensesList, expensesTotal] = await Promise.all([
     listSwaps(filters, { orderDesc: false }),
     aggregateSwaps(filters),
+    listExpenses(expenseFilters, { orderDesc: false }),
+    aggregateExpenses(expenseFilters),
   ]);
 
   const pdf = await buildSwapPdf(
@@ -118,9 +141,12 @@ router.get('/pdf', async (req, res) => {
         companyShare: agg.companyShare,
         stationShare: agg.stationShare,
         energyPercent: agg.netPercent,
+        totalExpenses: expensesTotal,
+        profit: agg.totalCharged - expensesTotal,
       },
     },
-    swaps
+    swaps,
+    expensesList
   );
 
   res.setHeader('Content-Type', 'application/pdf');

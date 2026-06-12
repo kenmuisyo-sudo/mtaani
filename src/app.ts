@@ -14,6 +14,7 @@ import swapRoutes from './routes/swaps.js';
 import reportRoutes from './routes/reports.js';
 import dashboardRoutes from './routes/dashboard.js';
 import activityRoutes from './routes/activity.js';
+import expensesRoutes from './routes/expenses.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = process.env.UPLOAD_DIR ?? path.join(__dirname, '../uploads');
@@ -78,6 +79,7 @@ app.use('/api/swaps', swapRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/expenses', expensesRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({

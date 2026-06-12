@@ -10,6 +10,8 @@ import type {
   User,
   UserRole,
   UserStatus,
+  Expense,
+  ExpenseFilters,
 } from './types.js';
 
 // ── Helpers ──
@@ -555,4 +557,55 @@ export async function getSubstationEmployees(substationId: string): Promise<Part
 export async function emailExists(email: string): Promise<boolean> {
   const snap = await rtdbRef(`users_by_email/${emailKey(email)}`).once('value');
   return snap.exists();
+}
+
+// ── Expenses ──
+
+export async function createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>): Promise<Expense> {
+  const id = newId();
+  const ts = nowIso();
+  const record = stripUndefined({ ...data, createdAt: ts, updatedAt: ts } as Record<string, unknown>);
+  await rtdbRef(`expenses/${id}`).set(record);
+  return { id, ...(record as Omit<Expense, 'id'>) };
+}
+
+function filterExpenses(expenses: Expense[], filters: ExpenseFilters): Expense[] {
+  return expenses.filter((e) => {
+    if (filters.organizationId && e.organizationId !== filters.organizationId) return false;
+    if (filters.substationId && e.substationId !== filters.substationId) return false;
+    if (filters.type && e.type !== filters.type) return false;
+    if (filters.dateGte && new Date(e.datePaid) < filters.dateGte) return false;
+    if (filters.dateLte && new Date(e.datePaid) > filters.dateLte) return false;
+    return true;
+  });
+}
+
+export async function listExpenses(
+  filters: ExpenseFilters,
+  opts?: { skip?: number; take?: number; orderDesc?: boolean }
+): Promise<Expense[]> {
+  const all = await getAllRecords<Expense>('expenses');
+  let expenses = filterExpenses(all, filters);
+  expenses.sort((a, b) => {
+    const diff = new Date(a.datePaid).getTime() - new Date(b.datePaid).getTime();
+    return opts?.orderDesc === false ? diff : -diff;
+  });
+  if (opts?.skip) expenses = expenses.slice(opts.skip);
+  if (opts?.take) expenses = expenses.slice(0, opts.take);
+
+  return Promise.all(expenses.map(async (e) => {
+    const sub = await getSubstation(e.substationId);
+    if (sub) e.substation = { name: sub.name, code: sub.code };
+    if (e.employeeId) {
+      const emp = await getUserById(e.employeeId);
+      if (emp) e.employee = { name: emp.name };
+    }
+    return e;
+  }));
+}
+
+export async function aggregateExpenses(filters: ExpenseFilters): Promise<number> {
+  const all = await getAllRecords<Expense>('expenses');
+  const expenses = filterExpenses(all, filters);
+  return expenses.reduce((sum, e) => sum + num(e.amount), 0);
 }
