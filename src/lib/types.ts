@@ -114,7 +114,7 @@ export interface SwapFilters {
   swappedAtLte?: Date;
 }
 
-export type ExpenseType = 'RENT' | 'SALARY' | 'ELECTRICITY';
+export type ExpenseType = 'RENT' | 'SALARY' | 'ELECTRICITY' | 'OTHER';
 
 export interface Expense {
   id: string;
@@ -127,7 +127,7 @@ export interface Expense {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
-  substation?: { name: string; code: string };
+  substation?: { name: string; code: string } | null;
   employee?: { name: string };
 }
 

@@ -41,6 +41,7 @@ enum ExpenseType {
   RENT
   SALARY
   ELECTRICITY
+  OTHER
 }
 
 enum ActivityType {

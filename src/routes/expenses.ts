@@ -9,7 +9,7 @@ router.use(authMiddleware);
 
 const expenseSchema = z.object({
   substationId: z.string().min(1),
-  type: z.enum(['RENT', 'SALARY', 'ELECTRICITY']),
+  type: z.enum(['RENT', 'SALARY', 'ELECTRICITY', 'OTHER']),
   amount: z.number().positive(),
   datePaid: z.string().datetime(),
   employeeId: z.string().nullable().optional(),
@@ -23,7 +23,6 @@ router.post('/', requireOwner, async (req, res) => {
       res.status(400).json({ error: 'employeeId is required for SALARY expense' });
       return;
     }
-
     const exp = await createExpense({
       organizationId: req.user!.organizationId,
       substationId: data.substationId,
